@@ -138,8 +138,25 @@ document.getElementById("saveEditBtn")
 
         const input = document.getElementById(`edit-${key}`);
 
-        if (input) {
-            currentEditingRecord[key] = input.value;
+        if (!input) return;
+
+        const value = input.value.trim();
+
+        // 🔥 Remove field if empty
+        if (value === "") {
+
+            // keep important fields
+            if (
+                key !== "name" &&
+                key !== "email" &&
+                key !== "createdAt"
+            ) {
+                delete currentEditingRecord[key];
+            }
+
+        } else {
+
+            currentEditingRecord[key] = value;
         }
     });
 
