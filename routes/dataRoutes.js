@@ -1,66 +1,95 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
+
+const Database = require("../core/database");
 
 const router = express.Router();
 
-const dbPath = path.join(__dirname, "..", "database.json");
+const db = new Database(
+    path.join(__dirname, "..", "data")
+);
+
+const users = db.collection("users");
 
 // GET all data
 router.get("/all", (req, res) => {
-    const data = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+    try {
+        const data = users.findAll();
 
-    res.json(data);
+        res.json(data);
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Failed to read data"
+        });
+    }
 });
 
 // CREATE new data
 router.post("/create", (req, res) => {
-    const record = req.body;
+    try {
+        const record = {
+            id: Date.now(),
+            ...req.body
+        };
 
-    const data = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+        users.insert(record);
 
-    data.push(record);
+        res.status(201).json({
+            message: "Record added successfully",
+            data: record
+        });
+    } catch (error) {
+        console.error(error);
 
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-
-    res.json({
-        message: "Record added successfully"
-    });
+        res.status(500).json({
+            message: "Failed to create record"
+        });
+    }
 });
 
 // DELETE data
 router.delete("/delete/:id", (req, res) => {
-    const id = Number(req.params.id);
+    try {
+        const id = Number(req.params.id);
 
-    let data = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+        users.deleteById(id);
 
-    data = data.filter(item => item.id !== id);
+        res.json({
+            message: "Data deleted"
+        });
+    } catch (error) {
+        console.error(error);
 
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-
-    res.json({ message: "Data deleted" });
+        res.status(500).json({
+            message: "Failed to delete data"
+        });
+    }
 });
 
 router.put("/edit/:id", (req, res) => {
-    const id = Number(req.params.id);
+    try {
+        const id = Number(req.params.id);
 
-    const updatedRecord = req.body;
+        const updatedRecord = {
+            id,
+            ...req.body
+        };
 
-    let data = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+        users.updateById(id, updatedRecord);
 
-    data = data.map(item => {
-        if (item.id === id) {
-            return updatedRecord;
-        }
+        res.json({
+            message: "Record updated",
+            data: updatedRecord
+        });
+    } catch (error) {
+        console.error(error);
 
-        return item;
-    });
-
-    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
-
-    res.json({
-        message: "Record updated"
-    });
+        res.status(500).json({
+            message: "Failed to update record"
+        });
+    }
 });
 
 module.exports = router;
