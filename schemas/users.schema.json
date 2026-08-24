@@ -18,5 +18,11 @@
   "age": {
     "type": "integer",
     "required": false
+  },
+  "cgpa": {
+    "type": "number",
+    "required": false,
+    "min": 0,
+    "max": 10
   }
 }
