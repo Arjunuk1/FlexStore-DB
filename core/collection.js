@@ -1,7 +1,8 @@
 class Collection {
-    constructor(name, storage) {
+    constructor(name, storage, validator = null) {
         this.name = name;
         this.storage = storage;
+        this.validator = validator;
     }
 
     findAll() {
@@ -9,6 +10,8 @@ class Collection {
     }
 
     insert(document) {
+        this.validateDocument(document);
+
         const documents = this.storage.read();
 
         documents.push(document);
@@ -29,6 +32,8 @@ class Collection {
     }
 
     updateById(id, updatedDocument) {
+        this.validateDocument(updatedDocument);
+
         const documents = this.storage.read();
 
         const updatedDocuments = documents.map(document => {
@@ -42,6 +47,20 @@ class Collection {
         this.storage.write(updatedDocuments);
 
         return updatedDocument;
+    }
+
+    validateDocument(document) {
+        if (!this.validator) {
+            return;
+        }
+
+        const result = this.validator.validate(document);
+
+        if (!result.valid) {
+            const error = new Error("Document validation failed");
+            error.details = result.errors;
+            throw error;
+        }
     }
 }
 
