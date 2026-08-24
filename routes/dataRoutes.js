@@ -6,7 +6,8 @@ const Database = require("../core/database");
 const router = express.Router();
 
 const db = new Database(
-    path.join(__dirname, "..", "data")
+    path.join(__dirname, "..", "data"),
+    path.join(__dirname, "..", "schemas")
 );
 
 const users = db.collection("users");
