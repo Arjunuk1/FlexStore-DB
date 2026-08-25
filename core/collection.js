@@ -1,12 +1,19 @@
+const QueryEngine = require("../query/queryEngine");
+
 class Collection {
     constructor(name, storage, validator = null) {
         this.name = name;
         this.storage = storage;
         this.validator = validator;
+        this.queryEngine = new QueryEngine();
     }
 
     findAll() {
         return this.storage.read();
+    }
+
+    find(query = {}) {
+        return this.queryEngine.find(this.storage.read(), query);
     }
 
     insert(document) {

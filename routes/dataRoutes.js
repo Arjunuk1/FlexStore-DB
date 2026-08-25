@@ -27,6 +27,25 @@ router.get("/all", (req, res) => {
     }
 });
 
+// Query collection data without changing the existing UI search behavior.
+router.post("/query", (req, res) => {
+    try {
+        const query = req.body.filter || {};
+        const results = users.find(query);
+
+        res.json({
+            count: results.length,
+            data: results
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
 // CREATE new data
 router.post("/create", (req, res) => {
     try {
