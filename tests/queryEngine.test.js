@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
+const Collection = require("../core/collection");
 const QueryEngine = require("../query/queryEngine");
 
 const engine = new QueryEngine();
@@ -65,4 +66,16 @@ test("matches nested fields", () => {
         engine.find(nestedDocuments, { "address.city": "Rajpura" }),
         [nestedDocuments[0]]
     );
+});
+
+test("collection delegates filtered finds to the query engine", () => {
+    const storage = {
+        read() {
+            return documents;
+        }
+    };
+    const users = new Collection("users", storage);
+
+    assert.deepEqual(users.find({ age: { $gte: 21 } }), [documents[1]]);
+    assert.deepEqual(users.find(), documents);
 });
