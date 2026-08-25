@@ -31,3 +31,38 @@ test("rejects invalid and unsupported field operators", () => {
     assert.throws(() => engine.find(documents, { age: { $in: 19 } }), /\$in expects an array/);
     assert.throws(() => engine.find(documents, { age: { $regex: "Arjun" } }), /Unsupported query operator/);
 });
+
+test("matches logical operators", () => {
+    assert.deepEqual(
+        engine.find(documents, {
+            $and: [{ age: { $gt: 18 } }, { active: true }]
+        }),
+        [documents[0], documents[1]]
+    );
+    assert.deepEqual(
+        engine.find(documents, {
+            $or: [{ age: { $lt: 18 } }, { age: { $gt: 20 } }]
+        }),
+        [documents[1], documents[2]]
+    );
+    assert.deepEqual(
+        engine.find(documents, { $not: { active: true } }),
+        [documents[2]]
+    );
+    assert.throws(
+        () => engine.find(documents, { $or: { active: true } }),
+        /\$or expects an array/
+    );
+});
+
+test("matches nested fields", () => {
+    const nestedDocuments = [
+        { name: "Arjun", address: { city: "Rajpura", country: "India" } },
+        { name: "Ayush", address: { city: "Chandigarh", country: "India" } }
+    ];
+
+    assert.deepEqual(
+        engine.find(nestedDocuments, { "address.city": "Rajpura" }),
+        [nestedDocuments[0]]
+    );
+});

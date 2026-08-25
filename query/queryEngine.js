@@ -5,6 +5,30 @@ class QueryEngine {
 
     matches(document, query) {
         for (const [field, condition] of Object.entries(query)) {
+            if (field === "$and") {
+                if (!this.matchAnd(document, condition)) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (field === "$or") {
+                if (!this.matchOr(document, condition)) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            if (field === "$not") {
+                if (this.matches(document, condition)) {
+                    return false;
+                }
+
+                continue;
+            }
+
             const value = this.getValue(document, field);
 
             if (!this.matchesCondition(value, condition)) {
@@ -13,6 +37,22 @@ class QueryEngine {
         }
 
         return true;
+    }
+
+    matchAnd(document, conditions) {
+        if (!Array.isArray(conditions)) {
+            throw new Error("$and expects an array of query conditions");
+        }
+
+        return conditions.every(condition => this.matches(document, condition));
+    }
+
+    matchOr(document, conditions) {
+        if (!Array.isArray(conditions)) {
+            throw new Error("$or expects an array of query conditions");
+        }
+
+        return conditions.some(condition => this.matches(document, condition));
     }
 
     matchesCondition(value, condition) {
