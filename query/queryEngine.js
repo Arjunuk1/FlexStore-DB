@@ -1,9 +1,13 @@
 class QueryEngine {
     find(documents, query = {}) {
+        this.assertQueryObject(query);
+
         return documents.filter(document => this.matches(document, query));
     }
 
     matches(document, query) {
+        this.assertQueryObject(query);
+
         for (const [field, condition] of Object.entries(query)) {
             if (field === "$and") {
                 if (!this.matchAnd(document, condition)) {
@@ -53,6 +57,16 @@ class QueryEngine {
         }
 
         return conditions.some(condition => this.matches(document, condition));
+    }
+
+    assertQueryObject(query) {
+        if (
+            query === null ||
+            typeof query !== "object" ||
+            Array.isArray(query)
+        ) {
+            throw new Error("Query conditions must be an object");
+        }
     }
 
     matchesCondition(value, condition) {

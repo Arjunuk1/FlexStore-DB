@@ -29,6 +29,8 @@ test("matches array and existence operators", () => {
 });
 
 test("rejects invalid and unsupported field operators", () => {
+    assert.throws(() => engine.find(documents, null), /Query conditions must be an object/);
+    assert.throws(() => engine.find(documents, []), /Query conditions must be an object/);
     assert.throws(() => engine.find(documents, { age: { $in: 19 } }), /\$in expects an array/);
     assert.throws(() => engine.find(documents, { age: { $regex: "Arjun" } }), /Unsupported query operator/);
 });
@@ -53,6 +55,10 @@ test("matches logical operators", () => {
     assert.throws(
         () => engine.find(documents, { $or: { active: true } }),
         /\$or expects an array/
+    );
+    assert.throws(
+        () => engine.find(documents, { $not: null }),
+        /Query conditions must be an object/
     );
 });
 
