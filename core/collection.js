@@ -1,4 +1,5 @@
 const QueryEngine = require("../query/queryEngine");
+const Query = require("../query/query");
 
 class Collection {
     constructor(name, storage, validator = null) {
@@ -13,7 +14,11 @@ class Collection {
     }
 
     find(query = {}) {
-        return this.queryEngine.find(this.storage.read(), query);
+        return new Query(
+            this.storage.read(),
+            this.queryEngine,
+            query
+        );
     }
 
     insert(document) {

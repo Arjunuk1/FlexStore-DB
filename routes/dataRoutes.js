@@ -30,8 +30,31 @@ router.get("/all", (req, res) => {
 // Query collection data without changing the existing UI search behavior.
 router.post("/query", (req, res) => {
     try {
-        const query = req.body.filter || {};
-        const results = users.find(query);
+        const {
+            filter = {},
+            sort,
+            skip = 0,
+            limit,
+            select
+        } = req.body;
+
+        let query = users.find(filter);
+
+        if (sort) {
+            query = query.sort(sort);
+        }
+
+        query = query.skip(skip);
+
+        if (limit !== undefined) {
+            query = query.limit(limit);
+        }
+
+        if (select) {
+            query = query.select(select);
+        }
+
+        const results = query.exec();
 
         res.json({
             count: results.length,

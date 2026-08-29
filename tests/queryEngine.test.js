@@ -74,7 +74,7 @@ test("matches nested fields", () => {
     );
 });
 
-test("collection delegates filtered finds to the query engine", () => {
+test("collection creates executable filtered queries", () => {
     const storage = {
         read() {
             return documents;
@@ -82,6 +82,6 @@ test("collection delegates filtered finds to the query engine", () => {
     };
     const users = new Collection("users", storage);
 
-    assert.deepEqual(users.find({ age: { $gte: 21 } }), [documents[1]]);
-    assert.deepEqual(users.find(), documents);
+    assert.deepEqual(users.find({ age: { $gte: 21 } }).exec(), [documents[1]]);
+    assert.deepEqual(users.find().exec(), documents);
 });
