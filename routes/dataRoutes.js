@@ -12,6 +12,61 @@ const db = new Database(
 
 const users = db.collection("users");
 
+router.post("/index", (req, res) => {
+    try {
+        const { field } = req.body;
+
+        if (!field) {
+            return res.status(400).json({
+                message: "Index field is required"
+            });
+        }
+
+        const index = users.createIndex(field);
+
+        res.status(201).json({
+            message: "Index created",
+            index
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
+router.get("/indexes", (req, res) => {
+    try {
+        res.json({
+            indexes: users.listIndexes()
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            message: "Failed to list indexes"
+        });
+    }
+});
+
+router.delete("/index/:field", (req, res) => {
+    try {
+        users.dropIndex(req.params.field);
+
+        res.json({
+            message: "Index dropped"
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
 // GET all data
 router.get("/all", (req, res) => {
     try {
