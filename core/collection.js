@@ -1,5 +1,6 @@
 const QueryEngine = require("../query/queryEngine");
 const Query = require("../query/query");
+const IndexManager = require("../index/indexManager");
 
 class Collection {
     constructor(name, storage, validator = null) {
@@ -7,6 +8,7 @@ class Collection {
         this.storage = storage;
         this.validator = validator;
         this.queryEngine = new QueryEngine();
+        this.indexManager = new IndexManager();
     }
 
     findAll() {
@@ -29,24 +31,38 @@ class Collection {
         documents.push(document);
 
         this.storage.write(documents);
+        this.indexManager.insert(document);
 
         return document;
     }
 
     deleteById(id) {
         const documents = this.storage.read();
+        const document = documents.find(document => document.id === id);
+
+        if (!document) {
+            return;
+        }
 
         const filteredDocuments = documents.filter(
             document => document.id !== id
         );
 
         this.storage.write(filteredDocuments);
+        this.indexManager.remove(document);
     }
 
     updateById(id, updatedDocument) {
         this.validateDocument(updatedDocument);
 
         const documents = this.storage.read();
+        const oldDocument = documents.find(document => document.id === id);
+
+        if (!oldDocument) {
+            throw new Error(`Document with id ${id} not found`);
+        }
+
+        this.indexManager.remove(oldDocument);
 
         const updatedDocuments = documents.map(document => {
             if (document.id === id) {
@@ -57,8 +73,31 @@ class Collection {
         });
 
         this.storage.write(updatedDocuments);
+        this.indexManager.insert(updatedDocument);
 
         return updatedDocument;
+    }
+
+    createIndex(field) {
+        const index = this.indexManager.createIndex(field);
+        const documents = this.storage.read();
+
+        for (const document of documents) {
+            index.insert(document);
+        }
+
+        return {
+            field,
+            type: "hash"
+        };
+    }
+
+    dropIndex(field) {
+        this.indexManager.dropIndex(field);
+    }
+
+    listIndexes() {
+        return this.indexManager.listIndexes();
     }
 
     validateDocument(document) {
