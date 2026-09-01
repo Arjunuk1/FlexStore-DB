@@ -3,29 +3,36 @@ class QueryPlanner {
         this.indexManager = indexManager;
     }
 
-    createPlan(filter) {
+    createPlan(filter = {}) {
         const fields = Object.keys(filter);
 
-        if (fields.length !== 1) {
-            return { type: "COLLECTION_SCAN" };
-        }
-
-        const field = fields[0];
-        const condition = filter[field];
-
-        if (typeof condition === "object" && condition !== null) {
-            return { type: "COLLECTION_SCAN" };
-        }
-
-        if (this.indexManager.hasIndex(field)) {
+        if (fields.length === 0) {
             return {
-                type: "INDEX_SCAN",
-                field,
-                value: condition
+                type: "COLLECTION_SCAN",
+                reason: "No filter provided"
             };
         }
 
-        return { type: "COLLECTION_SCAN" };
+        for (const field of fields) {
+            const condition = filter[field];
+            const isEqualityQuery =
+                typeof condition !== "object" || condition === null;
+
+            if (isEqualityQuery && this.indexManager.hasIndex(field)) {
+                return {
+                    type: "INDEX_SCAN",
+                    index: field,
+                    field,
+                    value: condition,
+                    reason: "Indexed equality lookup"
+                };
+            }
+        }
+
+        return {
+            type: "COLLECTION_SCAN",
+            reason: "No suitable index found for query"
+        };
     }
 }
 
