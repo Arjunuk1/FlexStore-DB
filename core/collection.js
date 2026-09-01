@@ -1,6 +1,7 @@
 const QueryEngine = require("../query/queryEngine");
 const Query = require("../query/query");
 const IndexManager = require("../index/indexManager");
+const QueryPlanner = require("../query/queryPlanner");
 
 class Collection {
     constructor(name, storage, validator = null) {
@@ -9,18 +10,15 @@ class Collection {
         this.validator = validator;
         this.queryEngine = new QueryEngine();
         this.indexManager = new IndexManager();
+        this.queryPlanner = new QueryPlanner(this.indexManager);
     }
 
     findAll() {
         return this.storage.read();
     }
 
-    find(query = {}) {
-        return new Query(
-            this.storage.read(),
-            this.queryEngine,
-            query
-        );
+    find(filter = {}) {
+        return new Query(this, filter);
     }
 
     insert(document) {
