@@ -1,6 +1,7 @@
 class Index {
-    constructor(field) {
+    constructor(field, options = {}) {
         this.field = field;
+        this.unique = options.unique || false;
     }
 
     insert(document) {
@@ -17,6 +18,14 @@ class Index {
 
     clear() {
         throw new Error("clear() not implemented");
+    }
+
+    getMetadata() {
+        return {
+            field: this.field,
+            unique: this.unique,
+            type: "base"
+        };
     }
 }
 
