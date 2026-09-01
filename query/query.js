@@ -1,9 +1,8 @@
 const { QueryOptionError } = require("./queryErrors");
 
 class Query {
-    constructor(documents, queryEngine, filter = {}) {
-        this.documents = documents;
-        this.queryEngine = queryEngine;
+    constructor(collection, filter = {}) {
+        this.collection = collection;
         this.filter = filter;
 
         this.sortOptions = null;
@@ -55,7 +54,22 @@ class Query {
     }
 
     exec() {
-        let results = this.queryEngine.find(this.documents, this.filter);
+        const documents = this.collection.storage.read();
+        const plan = this.collection.queryPlanner.createPlan(this.filter);
+        let candidateDocuments = documents;
+
+        if (plan.type === "INDEX_SCAN") {
+            const index = this.collection.indexManager.getIndex(plan.field);
+            const ids = index.find(plan.value);
+            const idSet = new Set(ids);
+
+            candidateDocuments = documents.filter(document => idSet.has(document.id));
+        }
+
+        let results = this.collection.queryEngine.find(
+            candidateDocuments,
+            this.filter
+        );
 
         if (this.sortOptions) {
             results = this.applySort(results, this.sortOptions);
@@ -74,6 +88,10 @@ class Query {
         }
 
         return results;
+    }
+
+    explain() {
+        return this.collection.queryPlanner.createPlan(this.filter);
     }
 
     applySort(documents, sortOptions) {
