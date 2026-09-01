@@ -1,8 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const Query = require("../query/query");
-const QueryEngine = require("../query/queryEngine");
+const Collection = require("../core/collection");
 
 const documents = [
     {
@@ -18,7 +17,14 @@ const documents = [
 ];
 
 function createQuery(filter = {}) {
-    return new Query(documents, new QueryEngine(), filter);
+    const storage = {
+        read() {
+            return documents;
+        }
+    };
+    const users = new Collection("users", storage);
+
+    return users.find(filter);
 }
 
 test("sorts ascending and descending without mutating the source array", () => {
@@ -84,4 +90,43 @@ test("rejects invalid query builder options", () => {
     assert.throws(() => createQuery().limit(-500), /limit must be a non-negative integer/);
     assert.throws(() => createQuery().sort({ age: 0 }), /sort directions must be either 1 or -1/);
     assert.throws(() => createQuery().select("name"), /select must be an array of field names/);
+});
+
+test("uses indexed candidates while preserving the query builder pipeline", () => {
+    const indexedDocuments = [
+        { id: 1, name: "Arjun", age: 19, email: "arjun@gmail.com" },
+        { id: 2, name: "Ayush", age: 22, email: "ayush@gmail.com" },
+        { id: 3, name: "Arjun", age: 25, email: "arjun@gmail.com" }
+    ];
+    const storage = {
+        read() {
+            return indexedDocuments;
+        }
+    };
+    const users = new Collection("users", storage);
+    users.createIndex("email");
+
+    let candidates;
+    const find = users.queryEngine.find.bind(users.queryEngine);
+    users.queryEngine.find = (candidateDocuments, filter) => {
+        candidates = candidateDocuments;
+        return find(candidateDocuments, filter);
+    };
+
+    const query = users.find({ email: "arjun@gmail.com" });
+
+    assert.deepEqual(query.explain(), {
+        type: "INDEX_SCAN",
+        field: "email",
+        value: "arjun@gmail.com"
+    });
+    assert.deepEqual(
+        query
+            .sort({ age: -1 })
+            .limit(1)
+            .select(["name", "email", "age"])
+            .exec(),
+        [{ name: "Arjun", email: "arjun@gmail.com", age: 25 }]
+    );
+    assert.deepEqual(candidates, [indexedDocuments[0], indexedDocuments[2]]);
 });
