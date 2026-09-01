@@ -25,11 +25,16 @@ class Collection {
         this.validateDocument(document);
 
         const documents = this.storage.read();
+        const nextDocuments = [...documents, document];
 
-        documents.push(document);
-
-        this.storage.write(documents);
         this.indexManager.insert(document);
+
+        try {
+            this.storage.write(nextDocuments);
+        } catch (error) {
+            this.indexManager.remove(document);
+            throw error;
+        }
 
         return document;
     }
@@ -60,8 +65,6 @@ class Collection {
             throw new Error(`Document with id ${id} not found`);
         }
 
-        this.indexManager.remove(oldDocument);
-
         const updatedDocuments = documents.map(document => {
             if (document.id === id) {
                 return updatedDocument;
@@ -70,24 +73,40 @@ class Collection {
             return document;
         });
 
-        this.storage.write(updatedDocuments);
-        this.indexManager.insert(updatedDocument);
+        this.indexManager.remove(oldDocument);
+
+        try {
+            this.indexManager.insert(updatedDocument);
+        } catch (error) {
+            this.indexManager.insert(oldDocument);
+            throw error;
+        }
+
+        try {
+            this.storage.write(updatedDocuments);
+        } catch (error) {
+            this.indexManager.remove(updatedDocument);
+            this.indexManager.insert(oldDocument);
+            throw error;
+        }
 
         return updatedDocument;
     }
 
-    createIndex(field) {
-        const index = this.indexManager.createIndex(field);
+    createIndex(field, options = {}) {
+        const index = this.indexManager.createIndex(field, options);
         const documents = this.storage.read();
 
-        for (const document of documents) {
-            index.insert(document);
+        try {
+            for (const document of documents) {
+                index.insert(document);
+            }
+        } catch (error) {
+            this.indexManager.dropIndex(field);
+            throw error;
         }
 
-        return {
-            field,
-            type: "hash"
-        };
+        return index.getMetadata();
     }
 
     dropIndex(field) {
