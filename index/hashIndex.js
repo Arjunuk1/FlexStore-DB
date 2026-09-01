@@ -1,8 +1,8 @@
 const Index = require("./index");
 
 class HashIndex extends Index {
-    constructor(field) {
-        super(field);
+    constructor(field, options = {}) {
+        super(field, options);
         this.map = new Map();
     }
 
@@ -13,11 +13,26 @@ class HashIndex extends Index {
             return;
         }
 
-        if (!this.map.has(value)) {
-            this.map.set(value, new Set());
+        const existingIds = this.map.get(value);
+
+        if (
+            this.unique &&
+            existingIds &&
+            existingIds.size > 0 &&
+            !existingIds.has(document.id)
+        ) {
+            throw new Error(
+                `Duplicate value for unique index on "${this.field}"`
+            );
         }
 
-        this.map.get(value).add(document.id);
+        const ids = existingIds || new Set();
+
+        if (!existingIds) {
+            this.map.set(value, ids);
+        }
+
+        ids.add(document.id);
     }
 
     remove(document) {
@@ -48,6 +63,25 @@ class HashIndex extends Index {
 
     clear() {
         this.map.clear();
+    }
+
+    size() {
+        let total = 0;
+
+        for (const ids of this.map.values()) {
+            total += ids.size;
+        }
+
+        return total;
+    }
+
+    getMetadata() {
+        return {
+            field: this.field,
+            unique: this.unique,
+            type: "hash",
+            entries: this.size()
+        };
     }
 
     getValue(document, field) {
