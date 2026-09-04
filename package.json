@@ -6,7 +6,8 @@
   "scripts": {
     "test": "node --test",
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "benchmark": "node benchmarks/indexBenchmark.js"
   },
   "keywords": [],
   "author": "",
