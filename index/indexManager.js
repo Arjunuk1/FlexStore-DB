@@ -5,12 +5,12 @@ class IndexManager {
         this.indexes = new Map();
     }
 
-    createIndex(field) {
+    createIndex(field, options = {}) {
         if (this.indexes.has(field)) {
             throw new Error(`Index already exists for field: ${field}`);
         }
 
-        const index = new HashIndex(field);
+        const index = new HashIndex(field, options);
         this.indexes.set(field, index);
 
         return index;
@@ -22,6 +22,8 @@ class IndexManager {
         }
 
         this.indexes.delete(field);
+
+        return true;
     }
 
     getIndex(field) {
@@ -33,12 +35,25 @@ class IndexManager {
     }
 
     listIndexes() {
-        return Array.from(this.indexes.keys());
+        return Array.from(this.indexes.values()).map(index =>
+            index.getMetadata()
+        );
     }
 
     insert(document) {
-        for (const index of this.indexes.values()) {
-            index.insert(document);
+        const updatedIndexes = [];
+
+        try {
+            for (const index of this.indexes.values()) {
+                index.insert(document);
+                updatedIndexes.push(index);
+            }
+        } catch (error) {
+            for (const index of updatedIndexes) {
+                index.remove(document);
+            }
+
+            throw error;
         }
     }
 
