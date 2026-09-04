@@ -1,4 +1,5 @@
 const { QueryOptionError } = require("./queryErrors");
+const { performance } = require("perf_hooks");
 
 class Query {
     constructor(collection, filter = {}) {
@@ -9,6 +10,7 @@ class Query {
         this.skipCount = 0;
         this.limitCount = null;
         this.projection = null;
+        this.lastExecutionStats = null;
     }
 
     sort(options) {
@@ -54,9 +56,11 @@ class Query {
     }
 
     exec() {
+        const startTime = performance.now();
         const documents = this.collection.storage.read();
         const plan = this.collection.queryPlanner.createPlan(this.filter);
         let candidateDocuments = documents;
+        let documentsScanned = documents.length;
 
         if (plan.type === "INDEX_SCAN") {
             const index = this.collection.indexManager.getIndex(plan.field);
@@ -64,6 +68,7 @@ class Query {
             const idSet = new Set(ids);
 
             candidateDocuments = documents.filter(document => idSet.has(document.id));
+            documentsScanned = candidateDocuments.length;
         }
 
         let results = this.collection.queryEngine.find(
@@ -87,11 +92,40 @@ class Query {
             results = this.applyProjection(results, this.projection);
         }
 
+        const endTime = performance.now();
+
+        this.lastExecutionStats = {
+            plan,
+            totalDocuments: documents.length,
+            documentsScanned,
+            resultsReturned: results.length,
+            executionTimeMs: Number((endTime - startTime).toFixed(3))
+        };
+
         return results;
     }
 
     explain() {
-        return this.collection.queryPlanner.createPlan(this.filter);
+        const documents = this.collection.storage.read();
+        const plan = this.collection.queryPlanner.createPlan(this.filter);
+        let estimatedCandidates = documents.length;
+
+        if (plan.type === "INDEX_SCAN") {
+            const index = this.collection.indexManager.getIndex(plan.field);
+            estimatedCandidates = index.find(plan.value).length;
+        }
+
+        return {
+            filter: this.filter,
+            plan,
+            totalDocuments: documents.length,
+            estimatedCandidates,
+            indexUsed: plan.type === "INDEX_SCAN" ? plan.field : null
+        };
+    }
+
+    getStats() {
+        return this.lastExecutionStats;
     }
 
     applySort(documents, sortOptions) {
