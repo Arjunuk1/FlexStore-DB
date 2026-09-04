@@ -14,15 +14,15 @@ const users = db.collection("users");
 
 router.post("/index", (req, res) => {
     try {
-        const { field } = req.body;
+        const { field, options = {} } = req.body;
 
-        if (!field) {
+        if (!field || typeof field !== "string") {
             return res.status(400).json({
-                message: "Index field is required"
+                message: "A valid index field is required"
             });
         }
 
-        const index = users.createIndex(field);
+        const index = users.createIndex(field, options);
 
         res.status(201).json({
             message: "Index created",
@@ -56,8 +56,23 @@ router.delete("/index/:field", (req, res) => {
         users.dropIndex(req.params.field);
 
         res.json({
-            message: "Index dropped"
+            message: `Index dropped: ${req.params.field}`
         });
+    } catch (error) {
+        console.error(error);
+
+        res.status(400).json({
+            message: error.message
+        });
+    }
+});
+
+router.post("/query/explain", (req, res) => {
+    try {
+        const { filter = {} } = req.body;
+        const explanation = users.find(filter).explain();
+
+        res.json(explanation);
     } catch (error) {
         console.error(error);
 
