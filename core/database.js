@@ -3,6 +3,7 @@ const path = require("path");
 const JsonStorage = require("../storage/jsonStorage");
 const Collection = require("./collection");
 const SchemaValidator = require("../schema/schemaValidator");
+const TransactionManager = require("../transactions/transactionManager");
 
 class Database {
     constructor(dataDirectory, schemaDirectory) {
@@ -13,6 +14,12 @@ class Database {
 
         fs.mkdirSync(this.dataDirectory, { recursive: true });
         fs.mkdirSync(this.schemaDirectory, { recursive: true });
+
+        this.transactionManager = new TransactionManager(
+            this,
+            this.dataDirectory
+        );
+        this.transactionManager.recover();
     }
 
     collection(name) {
@@ -47,6 +54,10 @@ class Database {
         }
 
         return this.collections.get(name);
+    }
+
+    beginTransaction() {
+        return this.transactionManager.begin();
     }
 }
 
