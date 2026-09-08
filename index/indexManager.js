@@ -66,6 +66,16 @@ class IndexManager {
     clear() {
         this.indexes.clear();
     }
+
+    rebuild(documents) {
+        for (const index of this.indexes.values()) {
+            index.clear();
+
+            for (const document of documents) {
+                index.insert(document);
+            }
+        }
+    }
 }
 
 module.exports = IndexManager;
