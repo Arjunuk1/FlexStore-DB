@@ -53,6 +53,40 @@ class Collection {
 
         this.storage.write(filteredDocuments);
         this.indexManager.remove(document);
+
+        return document;
+    }
+
+    update(filter, update) {
+        const documents = this.find(filter).exec();
+        const updatedDocuments = documents.map(document =>
+            this.applyUpdate(document, update)
+        );
+
+        for (const document of updatedDocuments) {
+            this.updateById(document.id, document);
+        }
+
+        return updatedDocuments;
+    }
+
+    delete(filter) {
+        const documents = this.find(filter).exec();
+
+        for (const document of documents) {
+            this.deleteById(document.id);
+        }
+
+        return documents;
+    }
+
+    replaceDocuments(documents) {
+        for (const document of documents) {
+            this.validateDocument(document);
+        }
+
+        this.storage.write(documents);
+        this.indexManager.rebuild(documents);
     }
 
     updateById(id, updatedDocument) {
@@ -129,6 +163,32 @@ class Collection {
             error.details = result.errors;
             throw error;
         }
+    }
+
+    applyUpdate(document, update) {
+        if (Object.keys(update).some(key => key.startsWith("$"))) {
+            const result = { ...document };
+
+            if (update.$set) {
+                Object.assign(result, update.$set);
+            }
+
+            if (update.$inc) {
+                for (const [field, amount] of Object.entries(update.$inc)) {
+                    result[field] = (result[field] || 0) + amount;
+                }
+            }
+
+            if (update.$unset) {
+                for (const field of Object.keys(update.$unset)) {
+                    delete result[field];
+                }
+            }
+
+            return result;
+        }
+
+        return { ...update, id: document.id };
     }
 }
 
