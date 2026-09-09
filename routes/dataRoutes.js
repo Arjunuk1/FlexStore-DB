@@ -12,6 +12,112 @@ const db = new Database(
 
 const users = db.collection("users");
 
+router.post("/transactions", (req, res) => {
+    try {
+        const transaction = db.beginTransaction();
+        res.status(201).json({
+            message: "Transaction started",
+            transaction: transaction.getInfo()
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.get("/transactions", (req, res) => {
+    res.json({
+        transactions: db.transactionManager.listActiveTransactions()
+    });
+});
+
+router.get("/transactions/wal", (req, res) => {
+    try {
+        const records = db.transactionManager.wal.readAll();
+        res.json({ count: records.length, records });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post("/transactions/checkpoint", (req, res) => {
+    try {
+        db.transactionManager.checkpoint();
+        res.json({ message: "WAL checkpoint completed" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post("/transactions/:id/operations", (req, res) => {
+    try {
+        const transaction = db.transactionManager.getTransaction(req.params.id);
+
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        const { type, collection, document, filter, update, id } = req.body;
+
+        if (type === "INSERT") {
+            transaction.insert(collection, document);
+        } else if (type === "UPDATE") {
+            transaction.update(collection, filter || { id }, update || document);
+        } else if (type === "DELETE") {
+            transaction.delete(collection, filter || { id });
+        } else {
+            return res.status(400).json({ message: "Unsupported transaction operation" });
+        }
+
+        return res.json({ message: "Operation staged", transaction: transaction.getInfo() });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+});
+
+router.post("/transactions/:id/commit", async (req, res) => {
+    try {
+        const transaction = db.transactionManager.getTransaction(req.params.id);
+
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        return res.json({
+            message: "Transaction committed",
+            transaction: await transaction.commit()
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+});
+
+router.post("/transactions/:id/rollback", (req, res) => {
+    try {
+        const transaction = db.transactionManager.getTransaction(req.params.id);
+
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        return res.json({
+            message: "Transaction rolled back",
+            transaction: transaction.rollback()
+        });
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+});
+
+router.get("/transactions/:id", (req, res) => {
+    const transaction = db.transactionManager.getTransaction(req.params.id);
+
+    if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found or already completed" });
+    }
+
+    return res.json(transaction.getInfo());
+});
+
 router.post("/index", (req, res) => {
     try {
         const { field, options = {} } = req.body;
