@@ -1,15 +1,20 @@
+const crypto = require("node:crypto");
+
 class Transaction {
-    constructor(id, database, transactionManager) {
-        this.id = id;
+    constructor(database, transactionManager) {
+        this.id = `txn_${crypto.randomUUID()}`;
         this.database = database;
         this.transactionManager = transactionManager;
         this.operations = [];
         this.status = "ACTIVE";
+        this.createdAt = Date.now();
+        this.committedAt = null;
+        this.rolledBackAt = null;
     }
 
     addOperation(operation) {
         if (this.status !== "ACTIVE") {
-            throw new Error("Transaction is no longer active");
+            throw new Error(`Transaction ${this.id} is ${this.status}`);
         }
 
         this.operations.push(operation);
@@ -34,6 +39,17 @@ class Transaction {
 
     rollback() {
         return this.transactionManager.rollback(this);
+    }
+
+    getInfo() {
+        return {
+            id: this.id,
+            status: this.status,
+            operations: this.operations.length,
+            createdAt: this.createdAt,
+            committedAt: this.committedAt,
+            rolledBackAt: this.rolledBackAt
+        };
     }
 }
 
