@@ -2,6 +2,43 @@
 
 FlexStore is a schema-flexible JSON document database with a standalone Express server.
 
+## Standalone database server and CLI
+
+The database engine can also run independently of Express as a newline-delimited
+JSON protocol over TCP. Start it with:
+
+```sh
+npm run db
+```
+
+In another terminal, start the client with:
+
+```sh
+npm run cli
+```
+
+The CLI supports database and collection management, CRUD, hash-index planning,
+session transactions, WAL inspection, and server information:
+
+```text
+CREATE DATABASE demo
+USE demo
+CREATE COLLECTION users
+INSERT users {"id":1,"name":"Arjun","age":21}
+FIND users {"age":21}
+CREATE INDEX users age
+EXPLAIN users {"age":21}
+BEGIN
+UPDATE users 1 {"$inc":{"age":1}}
+COMMIT
+SHOW WAL
+STATUS
+```
+
+Each TCP connection has its own selected database and transaction session. The
+Express application remains available with `npm start` and continues to use the
+same core `Database`, `Collection`, query, index, transaction, and WAL modules.
+
 ## Querying documents
 
 Collections support a query pipeline built from `find(query)`. Call `exec()` to
