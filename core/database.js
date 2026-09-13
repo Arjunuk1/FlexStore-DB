@@ -56,6 +56,43 @@ class Database {
         return this.collections.get(name);
     }
 
+    listCollections() {
+        const names = new Set(this.collections.keys());
+
+        for (const file of fs.readdirSync(this.dataDirectory)) {
+            if (file.endsWith(".json") && file !== "wal.log") {
+                names.add(file.slice(0, -5));
+            }
+        }
+
+        return Array.from(names).sort();
+    }
+
+    createCollection(name) {
+        this.assertCollectionName(name);
+        this.collection(name);
+        return { name, created: true };
+    }
+
+    dropCollection(name) {
+        this.assertCollectionName(name);
+        const filePath = path.join(this.dataDirectory, `${name}.json`);
+
+        if (!fs.existsSync(filePath) && !this.collections.has(name)) {
+            throw new Error(`Collection '${name}' does not exist`);
+        }
+
+        fs.rmSync(filePath, { force: true });
+        this.collections.delete(name);
+        return { name, deleted: true };
+    }
+
+    assertCollectionName(name) {
+        if (typeof name !== "string" || !/^[A-Za-z0-9_-]+$/.test(name)) {
+            throw new Error("Collection names may contain letters, numbers, _ and - only");
+        }
+    }
+
     beginTransaction() {
         return this.transactionManager.begin();
     }
