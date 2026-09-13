@@ -30,6 +30,7 @@ yarn-error.log*
 
 # Runtime database records
 /data/*.json
+/data/databases/
 
 # vercel
 .vercel
