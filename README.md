@@ -1,6 +1,6 @@
 # FlexStore
 
-FlexStore is a schema-flexible JSON document database with a standalone Express server.
+FlexStore is a Lightweight, Schema-Flexible JSON Document Database with a Standalone Server, Query Engine, Indexing, REST API and Developer SDK
 
 ## Standalone database server and CLI
 
