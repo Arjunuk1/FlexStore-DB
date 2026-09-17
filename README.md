@@ -127,3 +127,53 @@ Run all tests with:
 ```sh
 npm test
 ```
+
+## Phase 8: Frontend dashboard
+
+FlexStore now includes a React and Vite frontend for managing the database
+through a browser. The dashboard uses the existing Express API and supports:
+
+- Login and registration
+- Database and collection navigation
+- Document browsing, filtering, insertion, editing, and deletion
+- Query execution and query-plan inspection
+- Hash-index creation, inspection, and deletion
+- Schema validation tools
+- Transaction creation, staged operations, commit, and rollback
+- WAL and transaction log inspection
+
+### Start the frontend
+
+Install the frontend dependencies:
+
+```sh
+cd frontend
+npm install
+```
+
+Start the backend from the project root in one terminal:
+
+```sh
+npm start
+```
+
+Start the Vite development server from `frontend/` in another terminal:
+
+```sh
+npm run dev
+```
+
+The development server prints the local browser URL. The frontend communicates
+with the backend using the existing authentication and `/api` endpoints.
+
+### Frontend checks
+
+Run the frontend linter and production build from the `frontend/` directory:
+
+```sh
+npm run lint
+npm run build
+```
+
+The main dashboard routes are `/dashboard`, `/databases`, `/collections`,
+`/documents`, `/query`, `/indexes`, `/schema`, `/transactions`, and `/logs`.
