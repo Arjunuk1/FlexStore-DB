@@ -1,0 +1,10 @@
+import { useState } from "react";
+import { ArrowRight, Database, LockKeyhole } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+
+export default function Login() {
+    const navigate = useNavigate(); const [username, setUsername] = useState(""); const [password, setPassword] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+    const submit = async event => { event.preventDefault(); setBusy(true); setError(""); try { await api.login(username, password); sessionStorage.setItem("flexstore.authenticated", "true"); navigate("/dashboard"); } catch (requestError) { setError(requestError.message); } finally { setBusy(false); } };
+    return <div className="login-page"><div className="login-aside"><div className="brand large"><div className="brand-mark">F</div><div><strong>FlexStore</strong><small>data operations</small></div></div><div className="login-quote"><div className="eyebrow">DATABASE MANAGEMENT PLATFORM</div><h1>Make every record<br /><em>legible.</em></h1><p>A focused control surface for storage, queries, indexes, and recovery.</p><span className="login-line" /></div></div><div className="login-card"><div className="login-icon"><Database size={20} /></div><div className="eyebrow">WELCOME BACK</div><h2>Sign in to FlexStore</h2><p className="muted">Use the credentials configured by the API.</p><form onSubmit={submit}><label className="field"><span>Username</span><input value={username} onChange={event => setUsername(event.target.value)} autoComplete="username" required /></label><label className="field"><span>Password</span><div className="password-field"><LockKeyhole size={16} /><input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete="current-password" required /></div></label>{error && <div className="form-error">{error}</div>}<button className="button primary wide" disabled={busy}>{busy ? "Signing in..." : "Sign in"}<ArrowRight size={16} /></button></form><p className="login-foot">Authentication is verified by the backend. No password is stored in the browser.</p></div></div>;
+}
