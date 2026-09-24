@@ -133,7 +133,7 @@ npm test
 FlexStore now includes a React and Vite frontend for managing the database
 through a browser. The dashboard uses the existing Express API and supports:
 
-- Login and registration
+- Login through the existing authentication API
 - Database and collection navigation
 - Document browsing, filtering, insertion, editing, and deletion
 - Query execution and query-plan inspection
@@ -144,35 +144,41 @@ through a browser. The dashboard uses the existing Express API and supports:
 
 ### Start the frontend
 
-Install the frontend dependencies:
+From the project root, install the frontend dependencies:
 
 ```sh
-cd frontend
-npm install
+npm --prefix frontend install
 ```
 
-Start the backend from the project root in one terminal:
+Keep the backend running in one terminal:
 
 ```sh
 npm start
 ```
 
-Start the Vite development server from `frontend/` in another terminal:
+In a second terminal, from the project root, start the Vite development server:
 
 ```sh
-npm run dev
+npm run frontend
 ```
 
-The development server prints the local browser URL. The frontend communicates
-with the backend using the existing authentication and `/api` endpoints.
+Open the `Local` URL printed by Vite, normally `http://localhost:5173/`. If
+port `5173` is already in use, Vite automatically uses `http://localhost:5174/`
+instead. The backend must remain running on `http://localhost:3000/`; otherwise
+the frontend will show proxy errors such as `ECONNREFUSED` or `Request failed
+(502)`.
+
+The current React frontend provides a login screen at `/login`. The backend
+also exposes `POST /auth/register`, but there is not yet a registration screen
+in the React frontend.
 
 ### Frontend checks
 
-Run the frontend linter and production build from the `frontend/` directory:
+Run the frontend linter and production build from the project root:
 
 ```sh
-npm run lint
-npm run build
+npm --prefix frontend run lint
+npm run frontend:build
 ```
 
 The main dashboard routes are `/dashboard`, `/databases`, `/collections`,
