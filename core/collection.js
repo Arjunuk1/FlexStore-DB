@@ -4,13 +4,31 @@ const IndexManager = require("../index/indexManager");
 const QueryPlanner = require("../query/queryPlanner");
 
 class Collection {
-    constructor(name, storage, validator = null) {
+    constructor(name, storage, validator = null, indexPath = null) {
         this.name = name;
         this.storage = storage;
         this.validator = validator;
         this.queryEngine = new QueryEngine();
         this.indexManager = new IndexManager();
         this.queryPlanner = new QueryPlanner(this.indexManager);
+        this.indexPath = indexPath;
+        this.loadIndexes();
+    }
+
+    loadIndexes() {
+        if (!this.indexPath) return;
+        const fs = require("node:fs");
+        if (!fs.existsSync(this.indexPath)) return;
+        for (const metadata of JSON.parse(fs.readFileSync(this.indexPath, "utf8"))) {
+            const index = this.indexManager.createIndex(metadata.field, { unique: metadata.unique });
+            for (const document of this.storage.read()) index.insert(document);
+        }
+    }
+
+    saveIndexes() {
+        if (!this.indexPath) return;
+        const fs = require("node:fs");
+        fs.writeFileSync(this.indexPath, JSON.stringify(this.listIndexes(), null, 2));
     }
 
     findAll() {
@@ -140,11 +158,13 @@ class Collection {
             throw error;
         }
 
+        this.saveIndexes();
         return index.getMetadata();
     }
 
     dropIndex(field) {
         this.indexManager.dropIndex(field);
+        this.saveIndexes();
     }
 
     listIndexes() {
