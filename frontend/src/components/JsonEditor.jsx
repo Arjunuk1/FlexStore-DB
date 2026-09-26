@@ -1,11 +1,7 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 export default function JsonEditor({ value, onChange, label = "JSON document" }) {
-    const [error, setError] = useState("");
-
-    useEffect(() => {
-        try { JSON.parse(value); setError(""); } catch { setError("Enter valid JSON before saving."); }
-    }, [value]);
+    const error = useMemo(() => { try { JSON.parse(value); return ""; } catch { return "Enter valid JSON before saving."; } }, [value]);
 
     return <label className="field json-field">
         <span>{label}</span>
