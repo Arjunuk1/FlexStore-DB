@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Activity, Braces, Database, FileJson, Gauge, Layers3, ListTree, LogOut, Menu, Search, Table2, X } from "lucide-react";
+import { Activity, Braces, Database, FileJson, Gauge, Layers3, ListTree, Menu, Search, Table2, X } from "lucide-react";
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
