@@ -32,6 +32,7 @@ class Database {
                 this.schemaDirectory,
                 `${name}.schema.json`
             );
+            const indexPath = path.join(this.dataDirectory, `${name}.indexes.json`);
 
             const storage = new JsonStorage(filePath);
             let validator = null;
@@ -47,7 +48,8 @@ class Database {
             const collection = new Collection(
                 name,
                 storage,
-                validator
+                validator,
+                indexPath
             );
 
             this.collections.set(name, collection);
@@ -60,7 +62,7 @@ class Database {
         const names = new Set(this.collections.keys());
 
         for (const file of fs.readdirSync(this.dataDirectory)) {
-            if (file.endsWith(".json") && file !== "wal.log") {
+            if (file.endsWith(".json") && file !== "wal.log" && !file.endsWith(".indexes.json")) {
                 names.add(file.slice(0, -5));
             }
         }
@@ -74,6 +76,25 @@ class Database {
         return { name, created: true };
     }
 
+    getSchema(name) {
+        this.assertCollectionName(name);
+        const schemaPath = path.join(this.schemaDirectory, `${name}.schema.json`);
+        if (!fs.existsSync(schemaPath)) return null;
+        return JSON.parse(fs.readFileSync(schemaPath, "utf8"));
+    }
+
+    updateSchema(name, schema) {
+        this.assertCollectionName(name);
+        if (!schema || typeof schema !== "object" || Array.isArray(schema)) {
+            throw new Error("Schema must be a JSON object");
+        }
+        const schemaPath = path.join(this.schemaDirectory, `${name}.schema.json`);
+        fs.writeFileSync(schemaPath, JSON.stringify(schema, null, 2));
+        this.collections.delete(name);
+        this.collection(name);
+        return schema;
+    }
+
     dropCollection(name) {
         this.assertCollectionName(name);
         const filePath = path.join(this.dataDirectory, `${name}.json`);
@@ -83,6 +104,7 @@ class Database {
         }
 
         fs.rmSync(filePath, { force: true });
+        fs.rmSync(path.join(this.dataDirectory, `${name}.indexes.json`), { force: true });
         this.collections.delete(name);
         return { name, deleted: true };
     }
