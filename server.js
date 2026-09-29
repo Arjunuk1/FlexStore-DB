@@ -10,8 +10,8 @@ app.use(express.json());
 // Import routes
 const dataRoutes = require("./routes/dataRoutes");
 const authRoutes = require("./routes/authRoutes");
-app.use("/api", dataRoutes);
 app.use("/auth", authRoutes);
+app.use("/api", authRoutes.requireAuth, dataRoutes);
 
 const frontendPath = path.join(__dirname, "frontend", "dist");
 app.use(express.static(frontendPath));
@@ -24,6 +24,8 @@ app.get("/{*splat}", (req, res) => {
     return res.sendFile(path.join(frontendPath, "index.html"));
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+}
+
+module.exports = app;
