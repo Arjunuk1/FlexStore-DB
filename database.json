@@ -1,18 +1,1 @@
-[
-  {
-    "id": 1778146202886,
-    "name": "Arjun Sharma",
-    "email": "arjun251898@gmail.com",
-    "createdAt": "07/05/2026, 15:00:02",
-    "updatedAt": "08/05/2026, 12:31:49"
-  },
-  {
-    "id": 1778146282558,
-    "name": "Ayush Chauhan",
-    "email": "ayush@gmail.com",
-    "createdAt": "07/05/2026, 15:01:22",
-    "updatedAt": "07/05/2026, 15:01:51",
-    "college": "chitkara university",
-    "phone": "1234567891"
-  }
-]
+[]
