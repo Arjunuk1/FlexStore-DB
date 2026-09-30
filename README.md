@@ -1,6 +1,19 @@
-# FlexStore
+# FlexStore DB
 
-FlexStore is a Lightweight, Schema-Flexible JSON Document Database with a Standalone Server, Query Engine, Indexing, REST API and Developer SDK
+FlexStore DB is a schema-flexible JSON document database with one persistent
+storage layout shared by the REST API, TCP server, CLI, and React management
+console. Data lives under `data/databases/<database>` and schemas live under
+`schemas/databases/<database>`.
+
+Express and the TCP server use the same `DatabaseManager` path configuration,
+so writes made through either interface are visible to the other after reload.
+
+## Installation
+
+```sh
+npm install
+npm --prefix frontend install
+```
 
 ## Standalone database server and CLI
 
@@ -36,8 +49,13 @@ STATUS
 ```
 
 Each TCP connection has its own selected database and transaction session. The
-Express application remains available with `npm start` and continues to use the
-same core `Database`, `Collection`, query, index, transaction, and WAL modules.
+Express application and CLI use the same database directories and core engine.
+
+## REST API
+
+All `/api/*` routes require the authenticated HTTP-only session cookie created
+by `/auth/login`. Database-aware resources include databases, collections,
+documents, indexes, schemas, queries, and transactions under `/api`.
 
 ## Querying documents
 
@@ -61,7 +79,7 @@ The API exposes the same filtering at `POST /api/query`:
 ```sh
 curl -X POST http://localhost:3000/api/query \
   -H "Content-Type: application/json" \
-  -d '{"filter":{"age":{"$gte":18}},"sort":{"age":-1},"skip":0,"limit":10,"select":["name","age","email"]}'
+  -d '{"database":"demo","collection":"users","filter":{"age":{"$gte":18}},"sort":{"age":-1},"skip":0,"limit":10}'
 ```
 
 The pipeline order is filter, sort, skip, limit, and projection. The response
@@ -104,7 +122,8 @@ query.getStats();
 // { plan, totalDocuments, documentsScanned, resultsReturned, executionTimeMs }
 ```
 
-For HTTP clients, create an index with `POST /api/index` using
+For HTTP clients, create an index with
+`POST /api/databases/demo/collections/users/indexes` using
 `{ "field": "email", "options": { "unique": true } }`, and inspect a plan
 with `POST /api/query/explain` using `{ "filter": { "email": "user@example.com" } }`.
 
@@ -117,8 +136,8 @@ node benchmarks/indexBenchmark.js
 ```
 
 It reports collection-scan time, index-build time, and indexed-lookup time.
-Index definitions can be stored through `index/indexMetadataStore.js`; automatic
-startup rebuilding is intentionally left for a later persistence integration.
+Index definitions are persisted beside each collection and rebuilt when the
+database is reopened.
 
 ## Tests
 
@@ -128,7 +147,7 @@ Run all tests with:
 npm test
 ```
 
-## Phase 8: Frontend dashboard
+## React management console
 
 FlexStore now includes a React and Vite frontend for managing the database
 through a browser. The dashboard uses the existing Express API and supports:
@@ -168,9 +187,10 @@ instead. The backend must remain running on `http://localhost:3000/`; otherwise
 the frontend will show proxy errors such as `ECONNREFUSED` or `Request failed
 (502)`.
 
-The current React frontend provides a login screen at `/login`. The backend
-also exposes `POST /auth/register`, but there is not yet a registration screen
-in the React frontend.
+The React frontend provides a backend-verified login screen at `/login`,
+database and collection selectors, dynamic JSON documents, schema and index
+management, query plans, transactions, and WAL inspection. The UI redirects
+to `/login` when the authenticated session expires.
 
 ### Frontend checks
 
