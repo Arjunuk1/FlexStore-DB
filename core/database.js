@@ -95,6 +95,17 @@ class Database {
         return schema;
     }
 
+    deleteSchema(name) {
+        this.assertCollectionName(name);
+        const schemaPath = path.join(this.schemaDirectory, `${name}.schema.json`);
+        if (!fs.existsSync(schemaPath)) {
+            throw new Error(`Schema for collection '${name}' does not exist`);
+        }
+        fs.rmSync(schemaPath);
+        this.collections.delete(name);
+        return { name, deleted: true };
+    }
+
     dropCollection(name) {
         this.assertCollectionName(name);
         const filePath = path.join(this.dataDirectory, `${name}.json`);
