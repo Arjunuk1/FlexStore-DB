@@ -10,8 +10,13 @@ const secret = process.env.FLEXSTORE_SESSION_SECRET || "flexstore-development-se
 function readUsers() { return JSON.parse(fs.readFileSync(usersPath, "utf8")); }
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) { return `${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`; }
 function validPassword(password, stored) {
-    if (stored.includes(":")) { const [salt, hash] = stored.split(":"); return crypto.timingSafeEqual(Buffer.from(hash, "hex"), crypto.scryptSync(password, salt, 64)); }
-    return Buffer.from(password).toString("base64") === stored;
+    if (typeof password !== "string" || typeof stored !== "string") return false;
+    if (stored.includes(":")) {
+        const [salt, hash] = stored.split(":");
+        if (!salt || !/^[0-9a-f]+$/i.test(hash) || hash.length !== 128) return false;
+        return crypto.timingSafeEqual(Buffer.from(hash, "hex"), crypto.scryptSync(password, salt, 64));
+    }
+    return false;
 }
 function token(username) { const payload = Buffer.from(JSON.stringify({ username, expires: Date.now() + 86400000 })).toString("base64url"); return `${payload}.${crypto.createHmac("sha256", secret).update(payload).digest("base64url")}`; }
 function userFromRequest(req) {
@@ -20,8 +25,12 @@ function userFromRequest(req) {
     const [payload, signature] = value.split(".");
     const expected = crypto.createHmac("sha256", secret).update(payload || "").digest("base64url");
     if (!payload || !signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return data.expires > Date.now() ? data.username : null;
+    try {
+        const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+        return data.expires > Date.now() ? data.username : null;
+    } catch {
+        return null;
+    }
 }
 function cookie(value, maxAge = 86400) { return `flexstore_session=${value}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}`; }
 
