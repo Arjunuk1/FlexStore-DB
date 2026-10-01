@@ -45,6 +45,7 @@ export const api = {
     deleteIndex: (database, collection, field) => request(`/api/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection)}/indexes/${encodeURIComponent(field)}`, { method: "DELETE" }),
     getSchema: (database, collection) => request(`/api/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection)}/schema`),
     updateSchema: (database, collection, schema) => request(`/api/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection)}/schema`, { method: "PUT", body: JSON.stringify({ schema }) }),
+    deleteSchema: (database, collection) => request(`/api/databases/${encodeURIComponent(database)}/collections/${encodeURIComponent(collection)}/schema`, { method: "DELETE" }),
     beginTransaction: database => request("/api/transactions", { method: "POST", body: JSON.stringify({ database }) }),
     getTransactions: database => request(`/api/transactions?database=${encodeURIComponent(database)}`),
     stageOperation: (database, id, operation) => request(`/api/transactions/${encodeURIComponent(id)}/operations`, { method: "POST", body: JSON.stringify({ database, ...operation }) }),
