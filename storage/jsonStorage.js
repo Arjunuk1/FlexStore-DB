@@ -21,11 +21,21 @@ class JsonStorage {
     }
 
     write(data) {
-        fs.writeFileSync(
-            this.filePath,
-            JSON.stringify(data, null, 2),
-            "utf8"
-        );
+        const temporaryPath = `${this.filePath}.tmp-${process.pid}`;
+        fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+
+        try {
+            const descriptor = fs.openSync(temporaryPath, "w");
+            try {
+                fs.writeFileSync(descriptor, JSON.stringify(data, null, 2), "utf8");
+                fs.fsyncSync(descriptor);
+            } finally {
+                fs.closeSync(descriptor);
+            }
+            fs.renameSync(temporaryPath, this.filePath);
+        } finally {
+            if (fs.existsSync(temporaryPath)) fs.rmSync(temporaryPath, { force: true });
+        }
     }
 }
 
