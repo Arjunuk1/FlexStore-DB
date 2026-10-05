@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api } from "../services/api";
 
 const AppContext = createContext(null);
@@ -16,17 +16,17 @@ export function AppProvider({ children }) {
         localStorage.setItem("flexstore.collection", selectedCollection);
     }, [selectedDatabase, selectedCollection]);
 
-    const refreshDatabases = async () => {
+    const refreshDatabases = useCallback(async () => {
         const data = await api.getDatabases();
         setDatabases(data.databases || []);
         const database = (data.databases || []).includes(selectedDatabase) ? selectedDatabase : data.databases?.[0] || "";
         setSelectedDatabase(database);
         return data;
-    };
+    }, [selectedDatabase]);
 
     useEffect(() => {
         refreshDatabases().catch(error => setNotice({ type: "error", message: error.message })).finally(() => setLoadingScope(false));
-    }, []);
+    }, [refreshDatabases]);
 
     useEffect(() => {
         if (!selectedDatabase) { setCollections([]); setSelectedCollection(""); return; }
@@ -35,7 +35,7 @@ export function AppProvider({ children }) {
             setCollections(values);
             if (!values.includes(selectedCollection)) setSelectedCollection(values[0] || "");
         }).catch(error => setNotice({ type: "error", message: error.message }));
-    }, [selectedDatabase]);
+    }, [selectedDatabase, selectedCollection]);
 
     useEffect(() => {
         if (!notice) return undefined;

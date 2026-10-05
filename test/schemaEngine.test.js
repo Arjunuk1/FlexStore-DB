@@ -82,3 +82,19 @@ test("database loads the users schema and persists valid documents", () => {
         fs.rmSync(temporaryDirectory, { recursive: true, force: true });
     }
 });
+
+test("database persists and deletes collection schemas", () => {
+    const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "flexstore-schema-lifecycle-"));
+    const database = new Database(path.join(temporaryDirectory, "data"), path.join(temporaryDirectory, "schemas"));
+
+    try {
+        const schema = { email: { type: "string", required: true } };
+        database.createCollection("users");
+        assert.deepEqual(database.updateSchema("users", schema), schema);
+        assert.deepEqual(new Database(path.join(temporaryDirectory, "data"), path.join(temporaryDirectory, "schemas")).getSchema("users"), schema);
+        assert.deepEqual(database.deleteSchema("users"), { name: "users", deleted: true });
+        assert.equal(database.getSchema("users"), null);
+    } finally {
+        fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+});
