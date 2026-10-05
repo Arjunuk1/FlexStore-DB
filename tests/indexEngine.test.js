@@ -1,9 +1,13 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
 const Collection = require("../core/collection");
 const HashIndex = require("../index/hashIndex");
 const IndexManager = require("../index/indexManager");
+const Database = require("../core/database");
 
 function createCollection(initialDocuments = []) {
     let documents = [...initialDocuments];
@@ -86,4 +90,24 @@ test("collection rolls back a duplicate update and cleans up a failed unique ind
         /Duplicate value for unique index/
     );
     assert.deepEqual(duplicateCollection.listIndexes(), []);
+});
+
+test("database restores index metadata after reopening", () => {
+    const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "flexstore-index-persistence-"));
+    const dataDirectory = path.join(temporaryDirectory, "data");
+    const schemaDirectory = path.join(temporaryDirectory, "schemas");
+
+    try {
+        const database = new Database(dataDirectory, schemaDirectory);
+        const users = database.collection("users");
+        users.insert({ id: 1, email: "a@example.com" });
+        users.createIndex("email", { unique: true });
+
+        const reopened = new Database(dataDirectory, schemaDirectory);
+        const restored = reopened.collection("users");
+        assert.deepEqual(restored.listIndexes(), [{ field: "email", unique: true, type: "hash", entries: 1 }]);
+        assert.deepEqual(restored.find({ email: "a@example.com" }).explain().plan.type, "INDEX_SCAN");
+    } finally {
+        fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
 });
