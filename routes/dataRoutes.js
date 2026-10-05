@@ -55,6 +55,7 @@ router.post("/databases/:database/collections/:collection/indexes", (req, res) =
 router.delete("/databases/:database/collections/:collection/indexes/:field", (req, res) => { try { collection(req).dropIndex(req.params.field); return res.json({ message: "Index deleted" }); } catch (error) { return failure(res, error); } });
 router.get("/databases/:database/collections/:collection/schema", (req, res) => { try { return res.json({ schema: database(req).getSchema(req.params.collection) }); } catch (error) { return failure(res, error); } });
 router.put("/databases/:database/collections/:collection/schema", (req, res) => { try { return res.json({ schema: database(req).updateSchema(req.params.collection, req.body.schema || req.body) }); } catch (error) { return failure(res, error); } });
+router.delete("/databases/:database/collections/:collection/schema", (req, res) => { try { return res.json(database(req).deleteSchema(req.params.collection)); } catch (error) { return failure(res, error); } });
 
 router.post("/query", (req, res) => {
     try {
