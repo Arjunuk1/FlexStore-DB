@@ -2,6 +2,7 @@ const QueryEngine = require("../query/queryEngine");
 const Query = require("../query/query");
 const IndexManager = require("../index/indexManager");
 const QueryPlanner = require("../query/queryPlanner");
+const fs = require("node:fs");
 
 class Collection {
     constructor(name, storage, validator = null, indexPath = null) {
@@ -13,9 +14,11 @@ class Collection {
         this.queryPlanner = new QueryPlanner(this.indexManager);
         this.indexPath = indexPath;
         this.loadIndexes();
+        this.recordFileState();
     }
 
     loadIndexes() {
+        this.indexManager.clear();
         if (!this.indexPath) return;
         const fs = require("node:fs");
         if (!fs.existsSync(this.indexPath)) return;
@@ -29,9 +32,59 @@ class Collection {
         if (!this.indexPath) return;
         const fs = require("node:fs");
         fs.writeFileSync(this.indexPath, JSON.stringify(this.listIndexes(), null, 2));
+        this.recordFileState();
+    }
+
+    recordFileState() {
+        this.dataMtime = this.fileMtime(this.storage.filePath);
+        this.indexMtime = this.fileMtime(this.indexPath);
+    }
+
+    fileMtime(filePath) {
+        return filePath && fs.existsSync(filePath) ? fs.statSync(filePath).mtimeMs : 0;
+    }
+
+    withFileLock(action) {
+        const lockPath = `${this.storage.filePath}.lock`;
+        let descriptor;
+        try {
+            for (;;) {
+                try {
+                    descriptor = fs.openSync(lockPath, "wx");
+                    fs.writeFileSync(descriptor, String(process.pid), "utf8");
+                    break;
+                } catch (error) {
+                    if (error.code !== "EEXIST") throw error;
+                    try {
+                        const owner = fs.readFileSync(lockPath, "utf8").trim();
+                        let active = false;
+                        try { active = Boolean(owner) && (process.kill(Number(owner), 0), true); } catch {}
+                        if (!active) { fs.rmSync(lockPath, { force: true }); continue; }
+                    } catch (lockError) {
+                        if (lockError.code === "ENOENT") continue;
+                        throw lockError;
+                    }
+                    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+                }
+            }
+            return action();
+        } finally {
+            if (descriptor !== undefined) fs.closeSync(descriptor);
+            if (descriptor !== undefined) fs.rmSync(lockPath, { force: true });
+        }
+    }
+
+    refreshFromDisk() {
+        const dataMtime = this.fileMtime(this.storage.filePath);
+        const indexMtime = this.fileMtime(this.indexPath);
+        if (dataMtime !== this.dataMtime || indexMtime !== this.indexMtime) {
+            this.loadIndexes();
+            this.recordFileState();
+        }
     }
 
     findAll() {
+        this.refreshFromDisk();
         return this.storage.read();
     }
 
@@ -40,6 +93,11 @@ class Collection {
     }
 
     insert(document) {
+        return this.withFileLock(() => this.insertUnlocked(document));
+    }
+
+    insertUnlocked(document) {
+        this.refreshFromDisk();
         this.validateDocument(document);
 
         const documents = this.storage.read();
@@ -54,10 +112,16 @@ class Collection {
             throw error;
         }
 
+        this.recordFileState();
         return document;
     }
 
     deleteById(id) {
+        return this.withFileLock(() => this.deleteByIdUnlocked(id));
+    }
+
+    deleteByIdUnlocked(id) {
+        this.refreshFromDisk();
         const documents = this.storage.read();
         const document = documents.find(document => document.id === id);
 
@@ -71,6 +135,7 @@ class Collection {
 
         this.storage.write(filteredDocuments);
         this.indexManager.remove(document);
+        this.recordFileState();
 
         return document;
     }
@@ -99,15 +164,26 @@ class Collection {
     }
 
     replaceDocuments(documents) {
+        return this.withFileLock(() => this.replaceDocumentsUnlocked(documents));
+    }
+
+    replaceDocumentsUnlocked(documents) {
+        this.refreshFromDisk();
         for (const document of documents) {
             this.validateDocument(document);
         }
 
         this.storage.write(documents);
         this.indexManager.rebuild(documents);
+        this.recordFileState();
     }
 
     updateById(id, updatedDocument) {
+        return this.withFileLock(() => this.updateByIdUnlocked(id, updatedDocument));
+    }
+
+    updateByIdUnlocked(id, updatedDocument) {
+        this.refreshFromDisk();
         this.validateDocument(updatedDocument);
 
         const documents = this.storage.read();
@@ -142,10 +218,15 @@ class Collection {
             throw error;
         }
 
+        this.recordFileState();
         return updatedDocument;
     }
 
     createIndex(field, options = {}) {
+        return this.withFileLock(() => this.createIndexUnlocked(field, options));
+    }
+
+    createIndexUnlocked(field, options = {}) {
         const index = this.indexManager.createIndex(field, options);
         const documents = this.storage.read();
 
@@ -163,11 +244,16 @@ class Collection {
     }
 
     dropIndex(field) {
+        return this.withFileLock(() => this.dropIndexUnlocked(field));
+    }
+
+    dropIndexUnlocked(field) {
         this.indexManager.dropIndex(field);
         this.saveIndexes();
     }
 
     listIndexes() {
+        this.refreshFromDisk();
         return this.indexManager.listIndexes();
     }
 
