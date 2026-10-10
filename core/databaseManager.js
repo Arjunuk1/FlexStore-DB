@@ -14,10 +14,16 @@ class DatabaseManager {
     }
 
     loadDatabases() {
+        const names = new Set();
         for (const name of fs.readdirSync(this.basePath, { withFileTypes: true })) {
             if (name.isDirectory() && /^[A-Za-z0-9_-]+$/.test(name.name)) {
-                this.databases.set(name.name, this.openDatabase(name.name));
+                names.add(name.name);
+                if (!this.databases.has(name.name)) this.databases.set(name.name, this.openDatabase(name.name));
+                else this.databases.get(name.name).refreshFromDisk();
             }
+        }
+        for (const name of this.databases.keys()) {
+            if (!names.has(name)) this.databases.delete(name);
         }
     }
 
@@ -36,6 +42,7 @@ class DatabaseManager {
 
     createDatabase(name) {
         this.validateName(name);
+        this.loadDatabases();
         if (this.databases.has(name)) {
             throw new Error(`Database '${name}' already exists`);
         }
@@ -46,6 +53,7 @@ class DatabaseManager {
     }
 
     getDatabase(name) {
+        this.loadDatabases();
         if (!this.databases.has(name)) {
             throw new Error(`Database '${name}' does not exist`);
         }
@@ -54,10 +62,12 @@ class DatabaseManager {
     }
 
     listDatabases() {
+        this.loadDatabases();
         return Array.from(this.databases.keys()).sort();
     }
 
     dropDatabase(name) {
+        this.loadDatabases();
         const database = this.getDatabase(name);
         if (database.transactionManager.listActiveTransactions().length > 0) {
             throw new Error(`Database '${name}' has active transactions`);
