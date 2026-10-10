@@ -24,10 +24,8 @@ class Database {
 
     collection(name) {
         if (!this.collections.has(name)) {
-            const filePath = path.join(
-                this.dataDirectory,
-                `${name}.json`
-            );
+            this.assertCollectionName(name);
+            const filePath = path.join(this.dataDirectory, `${name}.json`);
             const schemaPath = path.join(
                 this.schemaDirectory,
                 `${name}.schema.json`
@@ -51,6 +49,7 @@ class Database {
                 validator,
                 indexPath
             );
+            collection.schemaMtime = fs.existsSync(schemaPath) ? fs.statSync(schemaPath).mtimeMs : 0;
 
             this.collections.set(name, collection);
         }
@@ -62,7 +61,9 @@ class Database {
         const names = new Set(this.collections.keys());
 
         for (const file of fs.readdirSync(this.dataDirectory)) {
-            if (file.endsWith(".json") && file !== "wal.log" && !file.endsWith(".indexes.json")) {
+            if (file.endsWith(".collection.json")) {
+                names.add(file.slice(0, -16));
+            } else if (file.endsWith(".json") && file !== "wal.log" && !file.endsWith(".indexes.json")) {
                 names.add(file.slice(0, -5));
             }
         }
@@ -72,7 +73,12 @@ class Database {
 
     createCollection(name) {
         this.assertCollectionName(name);
+        const markerPath = path.join(this.dataDirectory, `${name}.collection.json`);
+        if (this.listCollections().includes(name)) {
+            throw new Error(`Collection '${name}' already exists`);
+        }
         this.collection(name);
+        fs.writeFileSync(markerPath, JSON.stringify({ name }, null, 2));
         return { name, created: true };
     }
 
@@ -109,15 +115,36 @@ class Database {
     dropCollection(name) {
         this.assertCollectionName(name);
         const filePath = path.join(this.dataDirectory, `${name}.json`);
+        const markerPath = path.join(this.dataDirectory, `${name}.collection.json`);
+        const schemaPath = path.join(this.schemaDirectory, `${name}.schema.json`);
+        const indexPath = path.join(this.dataDirectory, `${name}.indexes.json`);
 
-        if (!fs.existsSync(filePath) && !this.collections.has(name)) {
+        if (!fs.existsSync(filePath) && !fs.existsSync(markerPath) && !this.collections.has(name)) {
             throw new Error(`Collection '${name}' does not exist`);
         }
 
         fs.rmSync(filePath, { force: true });
-        fs.rmSync(path.join(this.dataDirectory, `${name}.indexes.json`), { force: true });
+        fs.rmSync(markerPath, { force: true });
+        fs.rmSync(indexPath, { force: true });
+        fs.rmSync(schemaPath, { force: true });
         this.collections.delete(name);
         return { name, deleted: true };
+    }
+
+    refreshFromDisk() {
+        for (const name of this.listCollections()) {
+            if (!this.collections.has(name)) continue;
+            const schemaPath = path.join(this.schemaDirectory, `${name}.schema.json`);
+            const schemaMtime = fs.existsSync(schemaPath) ? fs.statSync(schemaPath).mtimeMs : 0;
+            const collection = this.collections.get(name);
+            if (collection.schemaMtime !== schemaMtime) {
+                this.collections.delete(name);
+                const refreshed = this.collection(name);
+                refreshed.schemaMtime = schemaMtime;
+            } else {
+                collection.refreshFromDisk();
+            }
+        }
     }
 
     assertCollectionName(name) {
