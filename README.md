@@ -5,8 +5,13 @@ storage layout shared by the REST API, TCP server, CLI, and React management
 console. Data lives under `data/databases/<database>` and schemas live under
 `schemas/databases/<database>`.
 
-Express and the TCP server use the same `DatabaseManager` path configuration,
-so writes made through either interface are visible to the other after reload.
+Express and the TCP server use the same file-backed engine layout. Each process
+refreshes database and collection metadata at operation boundaries, reloads
+changed index definitions, and serializes WAL appends with a filesystem lock.
+This makes ordinary CRUD and metadata changes visible across interfaces without
+a restart. Transactions are process-local and are not a cross-process isolation
+mechanism; concurrent read-modify-write operations still require external
+coordination for stronger isolation.
 
 ## Installation
 
