@@ -241,6 +241,10 @@ class TransactionManager {
     }
 
     checkpoint() {
+        if (this.transactions.size > 0 || Array.from(this.walManager.getPendingTransactions().values()).some(entries =>
+            !entries.some(entry => ["COMMIT", "ROLLBACK", "RECOVERY_ROLLBACK"].includes(entry.type)))) {
+            throw new Error("Cannot checkpoint while transactions are active");
+        }
         this.walManager.append({ type: "CHECKPOINT" });
         this.walManager.clear();
     }
